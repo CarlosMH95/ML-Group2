@@ -21,7 +21,7 @@ EPISODES = 500000
 
 EPSILON_START = 1.0
 EPSILON_END = 0.01
-EPSILON_DECAY = 0.999995  
+EPSILON_DECAY = 0.99999
 
 USE_REWARD_SHAPING = True
 SHAPING_WEIGHT = 0.15   
@@ -71,7 +71,8 @@ def discretize_state(state):
     s4 = np.digitize(angle, angle_bins)
     s5 = np.digitize(ang_vel, ang_vel_bins)
     
-    return (s0, s1, s2, s3, s4, s5)
+    #return (s0, s1, s2, s3, s4, s5)
+    return (s1, s3, s4, s5)  # Use only critical dimensions
 
 
 # ============================================================================
@@ -92,22 +93,22 @@ def simple_reward_shaping(state, reward, done):
     shaped_reward = reward
     
     y_pos = state[1]
-    x_vel = state[2]
+    #x_vel = state[2]
     y_vel = state[3]
     angle = state[4] 
     # Simple shaping: reward good landing configuration
     if y_pos < 0.5:  # Only when low (near landing)
         # Reward being upright
         if abs(angle) < 0.1:
-            shaped_reward += 0.5 * SHAPING_WEIGHT
+            shaped_reward += 0.1 * SHAPING_WEIGHT
         
         # Reward low velocity
         if abs(y_vel) < 0.3:
-            shaped_reward += 0.3 * SHAPING_WEIGHT
+            shaped_reward += 0.1 * SHAPING_WEIGHT
         
         # Reward being centered
         if abs(state[0]) < 0.2:
-            shaped_reward += 0.5 * SHAPING_WEIGHT
+            shaped_reward += 0.1 * SHAPING_WEIGHT
     
     return shaped_reward
 # ============================================================================
@@ -568,7 +569,7 @@ def plot_comparison(results_dict):
     ax.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.savefig(f'outputs/three_agents_comparison.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'outputs/4D/three_agents_comparison.png', dpi=300, bbox_inches='tight')
     print("\nPlot saved: three_agents_comparison.png")
     plt.close()
 
@@ -605,7 +606,7 @@ if __name__ == "__main__":
     all_agents['q-learning'] = q_agent
     
     # Save Q-Learning model
-    q_agent.save_q_table('outputs/q_learning_model.pkl')
+    q_agent.save_q_table('outputs/4D/q_learning_model.pkl')
     print("Q-Learning model saved!")
     
     # =======================================================================
@@ -625,7 +626,7 @@ if __name__ == "__main__":
     all_agents['sarsa'] = sarsa_agent
     
     # Save SARSA model
-    sarsa_agent.save_q_table('outputs/sarsa_model.pkl')
+    sarsa_agent.save_q_table('outputs/4D/sarsa_model.pkl')
     print("SARSA model saved!")
     
     # =======================================================================
@@ -645,7 +646,7 @@ if __name__ == "__main__":
     # all_agents['monte-carlo'] = mc_agent
     
     # # Save Monte Carlo model
-    # mc_agent.save_q_table('outputs/monte_carlo_model.pkl')
+    # mc_agent.save_q_table('outputs/4D/monte_carlo_model.pkl')
     # print("Monte Carlo model saved!")
     
     # =======================================================================
