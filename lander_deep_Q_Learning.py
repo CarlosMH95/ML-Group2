@@ -1,3 +1,11 @@
+#############################################################################################################################
+# Deep Q-Learning implementation for LunarLander-v3                                                                         #
+# Based on: https://github.com/goodboychan/goodboychan.github.io/blob/main/_notebooks/2021-05-07-DQN-LunarLander.ipynb      #
+# Comprehensive plotting functions inspired by tabular RL comparison plots                                                  #
+# Modified by: Anisha Adhikari , Adriana Alvarado, Sandesh Chapagain, Carlos Manosalvas, Aras Maqsoodi ​                     #
+# Plotting functions augmented by Sonnet 4.5                                                                                #
+#############################################################################################################################
+
 import gymnasium as gym
 import random
 import torch
