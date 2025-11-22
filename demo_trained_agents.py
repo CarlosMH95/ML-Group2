@@ -8,10 +8,12 @@ Usage:
 """
 
 import gymnasium as gym
+from gymnasium.wrappers import RecordVideo
 import numpy as np
 import pickle
 from collections import defaultdict
 import time
+import os
 
 
 # ============================================================================
@@ -117,6 +119,153 @@ class TrainedAgent:
 
 
 # ============================================================================
+# VIDEO RECORDING FUNCTION
+# ============================================================================
+
+def record_agent_video(agent, n_episodes=5, video_folder="videos", name_prefix=None):
+    """
+    Record video of trained agent playing LunarLander.
+    
+    Args:
+        agent: TrainedAgent instance with Q-table
+        n_episodes: Number of episodes to record
+        video_folder: Directory to save videos
+        name_prefix: Optional prefix for video filename (defaults to agent name)
+    
+    Returns:
+        dict: Summary statistics of recorded episodes
+    """
+    # Create video folder if it doesn't exist
+    os.makedirs(video_folder, exist_ok=True)
+    
+    # Set up video filename prefix
+    if name_prefix is None:
+        name_prefix = agent.name.lower().replace(" ", "_").replace("-", "_")
+    
+    print(f"\n{'='*70}")
+    print(f"RECORDING VIDEO: {agent.name}")
+    print(f"{'='*70}")
+    print(f"  Episodes: {n_episodes}")
+    print(f"  Output folder: {video_folder}/")
+    print(f"  Video prefix: {name_prefix}")
+    print()
+    
+    # Create environment with rgb_array render mode for video recording
+    env = gym.make('LunarLander-v3', render_mode='rgb_array')
+    
+    # Wrap with RecordVideo - records all episodes
+    env = RecordVideo(
+        env, 
+        video_folder=video_folder,
+        name_prefix=name_prefix,
+        episode_trigger=lambda episode_id: True  # Record all episodes
+    )
+    
+    episode_rewards = []
+    episode_steps = []
+    
+    for episode in range(n_episodes):
+        print(f"  Recording episode {episode + 1}/{n_episodes}...", end=" ")
+        
+        state_full, _ = env.reset()
+        state = discretize_state(state_full)
+        
+        total_reward = 0
+        step_count = 0
+        done = False
+        truncated = False
+        
+        while not done and not truncated:
+            # Choose action using greedy policy
+            action = agent.choose_action(state)
+            
+            # Take action
+            next_state_full, reward, done, truncated, _ = env.step(action)
+            next_state = discretize_state(next_state_full)
+            
+            state = next_state
+            total_reward += reward
+            step_count += 1
+        
+        episode_rewards.append(total_reward)
+        episode_steps.append(step_count)
+        
+        # Status indicator
+        if total_reward >= 200:
+            status = "✓ Success"
+        elif total_reward > 0:
+            status = "○ Partial"
+        else:
+            status = "✗ Crash"
+        
+        print(f"{status} (Reward: {total_reward:.1f}, Steps: {step_count})")
+    
+    env.close()
+    
+    # Summary
+    print(f"\n{'='*70}")
+    print(f"VIDEO RECORDING COMPLETE")
+    print(f"{'='*70}")
+    print(f"  Videos saved to: {video_folder}/")
+    print(f"  Mean Reward: {np.mean(episode_rewards):.2f}")
+    print(f"  Best Episode: {np.max(episode_rewards):.2f}")
+    print(f"  Success Rate: {sum(1 for r in episode_rewards if r >= 200) / n_episodes * 100:.1f}%")
+    print(f"{'='*70}\n")
+    
+    return {
+        'mean_reward': np.mean(episode_rewards),
+        'std_reward': np.std(episode_rewards),
+        'max_reward': np.max(episode_rewards),
+        'min_reward': np.min(episode_rewards),
+        'success_rate': sum(1 for r in episode_rewards if r >= 200) / n_episodes * 100,
+        'episode_rewards': episode_rewards,
+        'episode_steps': episode_steps,
+        'video_folder': video_folder
+    }
+
+
+def record_comparison_video(agents, n_episodes=3, video_folder="videos"):
+    """
+    Record videos of multiple agents for comparison.
+    
+    Args:
+        agents: List of TrainedAgent instances
+        n_episodes: Number of episodes per agent
+        video_folder: Directory to save videos
+    
+    Returns:
+        dict: Results for each agent
+    """
+    print(f"\n{'='*70}")
+    print(f"RECORDING COMPARISON VIDEOS")
+    print(f"{'='*70}")
+    print(f"  Agents: {', '.join(a.name for a in agents)}")
+    print(f"  Episodes per agent: {n_episodes}")
+    print()
+    
+    results = {}
+    
+    for agent in agents:
+        results[agent.name] = record_agent_video(
+            agent, 
+            n_episodes=n_episodes, 
+            video_folder=video_folder
+        )
+    
+    # Print comparison summary
+    print(f"\n{'='*70}")
+    print(f"COMPARISON SUMMARY")
+    print(f"{'='*70}")
+    for name, stats in results.items():
+        print(f"  {name}:")
+        print(f"    Mean Reward: {stats['mean_reward']:.2f} ± {stats['std_reward']:.2f}")
+        print(f"    Success Rate: {stats['success_rate']:.1f}%")
+    print(f"{'='*70}\n")
+    
+    return results
+
+
+# ============================================================================
 # VISUALIZATION FUNCTIONS
 # ============================================================================
 def evaluate_agent(agent, n_episodes=20, render=False):
@@ -138,7 +287,7 @@ def evaluate_agent(agent, n_episodes=20, render=False):
         truncated = False
         
         while not done and not truncated:
-            action = agent.choose_action(state, evaluation=True)
+            action = agent.choose_action(state)
             next_state_full, reward, done, truncated, _ = env.step(action)
             next_state = discretize_state(next_state_full)
             
@@ -339,9 +488,8 @@ def main():
     print("="*70)
     
     # Try to load both agents
-    q_learning_path = 'outputs/final_alpha1_500k_shaped/q_learning_model.pkl'
-    sarsa_path = 'outputs/final_alpha1_500k_shaped/sarsa_model.pkl'
-    #monte_carlo_path = '/mnt/user-data/outputs/monte_carlo_model.pkl'
+    q_learning_path = 'results/v1/q_learning_model.pkl'
+    sarsa_path = 'results/v1/sarsa_model.pkl'
     
     agents = []
     
@@ -381,11 +529,17 @@ def main():
             print("  3. Watch SARSA agent (3 episodes)")
             print("  4. Watch SARSA agent (1 episode, slow motion)")
         
+        # Video recording options
+        print("\n  --- Video Recording ---")
+        print("  5. Record video of an agent")
+        print("  6. Record comparison videos of all agents")
+        
         if len(agents) >= 2:
+            print("\n  --- Comparisons ---")
             print("  7. Compare two agents (same random seeds)")
             print("  8. Watch all agents sequentially")
         
-        print("  0. Exit")
+        print("\n  0. Exit")
         print("="*70)
         
         try:
@@ -396,7 +550,7 @@ def main():
                 break
             
             elif choice == '1' and agent_q:
-                demonstrate_agent(agent_q, n_episodes=3, delay=0.01)
+                demonstrate_agent(agent_q, n_episodes=5, delay=0.01)
                 #evaluate_agent(agent_q, n_episodes=5, render=True)
             
             elif choice == '2' and agent_q:
@@ -409,6 +563,34 @@ def main():
             elif choice == '4' and agent_sarsa:
                 print("\n🎬 Slow motion mode - watch carefully!")
                 demonstrate_agent(agent_sarsa, n_episodes=1, delay=0.03)
+            
+            elif choice == '5':
+                # Record video of selected agent
+                print("\nAvailable agents:")
+                for i, agent in enumerate(agents, 1):
+                    print(f"  {i}. {agent.name}")
+                
+                try:
+                    agent_idx = int(input("Select agent (number): ")) - 1
+                    if 0 <= agent_idx < len(agents):
+                        n_eps = int(input("How many episodes to record? (1-10): "))
+                        n_eps = max(1, min(10, n_eps))
+                        video_folder = input("Video folder (default: 'videos'): ").strip() or "videos"
+                        record_agent_video(agents[agent_idx], n_episodes=n_eps, video_folder=video_folder)
+                    else:
+                        print("❌ Invalid agent selection.")
+                except ValueError:
+                    print("❌ Invalid input.")
+            
+            elif choice == '6':
+                # Record comparison videos
+                try:
+                    n_eps = int(input("Episodes per agent (1-10): "))
+                    n_eps = max(1, min(10, n_eps))
+                    video_folder = input("Video folder (default: 'videos'): ").strip() or "videos"
+                    record_comparison_video(agents, n_episodes=n_eps, video_folder=video_folder)
+                except ValueError:
+                    print("❌ Invalid input.")
             
             elif choice == '7' and len(agents) >= 2:
                 print("\nAvailable agents:")
