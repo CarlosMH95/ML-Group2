@@ -5,19 +5,18 @@ import time
 from collections import defaultdict
 import pickle
 """
-THREE ALGORITHMS
+ ALGORITHMS
 ====================================================
 
-Comparing three fundamental RL algorithms:
+Comparing 2 fundamental RL algorithms:
 1. Q-Learning (Off-policy TD)
 2. SARSA (On-policy TD)
-3. Monte Carlo (Episode-based)
 """
 N_BINS = 12  
 
-LEARNING_RATE = 0.1 
+LEARNING_RATE = 0.1 # this value was changed to 0.05 and 0.025 for different experiments
 DISCOUNT = 0.99
-EPISODES = 500000        
+EPISODES = 500000
 
 EPSILON_START = 1.0
 EPSILON_END = 0.01
@@ -71,8 +70,8 @@ def discretize_state(state):
     s4 = np.digitize(angle, angle_bins)
     s5 = np.digitize(ang_vel, ang_vel_bins)
     
-    #return (s0, s1, s2, s3, s4, s5)
-    return (s1, s3, s4, s5)  # Use only critical dimensions
+    return (s0, s1, s2, s3, s4, s5)
+    #return (s1, s3, s4, s5)  # Use only critical dimensions
 
 
 # ============================================================================
@@ -93,7 +92,7 @@ def simple_reward_shaping(state, reward, done):
     shaped_reward = reward
     
     y_pos = state[1]
-    #x_vel = state[2]
+    x_vel = state[2]
     y_vel = state[3]
     angle = state[4] 
     # Simple shaping: reward good landing configuration
@@ -569,8 +568,8 @@ def plot_comparison(results_dict):
     ax.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.savefig(f'outputs/4D/three_agents_comparison.png', dpi=300, bbox_inches='tight')
-    print("\nPlot saved: three_agents_comparison.png")
+    plt.savefig(f'results/final_alpha_quarter/agents_comparison_a0-25.png', dpi=300, bbox_inches='tight')
+    print("\nPlot saved: agents_comparison_a0-25.png")
     plt.close()
 
 
@@ -606,7 +605,7 @@ if __name__ == "__main__":
     all_agents['q-learning'] = q_agent
     
     # Save Q-Learning model
-    q_agent.save_q_table('outputs/4D/q_learning_model.pkl')
+    q_agent.save_q_table('results/final_alpha_quarter/q_learning_model.pkl')
     print("Q-Learning model saved!")
     
     # =======================================================================
@@ -626,7 +625,7 @@ if __name__ == "__main__":
     all_agents['sarsa'] = sarsa_agent
     
     # Save SARSA model
-    sarsa_agent.save_q_table('outputs/4D/sarsa_model.pkl')
+    sarsa_agent.save_q_table('results/final_alpha_quarter/sarsa_model.pkl')
     print("SARSA model saved!")
     
     # =======================================================================
@@ -646,7 +645,7 @@ if __name__ == "__main__":
     # all_agents['monte-carlo'] = mc_agent
     
     # # Save Monte Carlo model
-    # mc_agent.save_q_table('outputs/4D/monte_carlo_model.pkl')
+    # mc_agent.save_q_table('results/final_alpha_quarter/monte_carlo_model.pkl')
     # print("Monte Carlo model saved!")
     
     # =======================================================================
